@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英打遊戲 - 任務四</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            padding: 30px;
+            width: 100%;
+            max-width: 650px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 2rem;
+        }
+
+        /* 遊戲狀態面板 */
+        .dashboard {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background-color: #edf2f7;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+
+        .dash-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .dash-label {
+            font-size: 0.9rem;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+
+        .dash-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .target-letter {
+            font-size: 3rem;
+            color: #3182ce;
+        }
+
+        /* 控制按鈕 */
+        .controls {
+            margin-bottom: 25px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: white;
+            margin: 0 5px;
+        }
+
+        .btn-start {
+            background-color: #48bb78;
+        }
+
+        .btn-start:hover {
+            background-color: #38a169;
+        }
+
+        .btn-stop {
+            background-color: #e53e3e;
+        }
+
+        .btn-stop:hover {
+            background-color: #c53030;
+        }
+
+        .btn:disabled {
+            background-color: #cbd5e0;
+            cursor: not-allowed;
+        }
+
+        /* 虛擬鍵盤 */
+        .keyboard {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .key {
+            width: 65px;
+            height: 65px;
+            border: 2px solid #cbd5e0;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #4a5568;
+            background-color: #f7fafc;
+            box-shadow: 0 4px 0 #cbd5e0;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+
+        /* 提示需要按下的按鍵樣式 */
+        .key.active {
+            background-color: #4299e1;
+            color: white;
+            border-color: #3182ce;
+            box-shadow: 0 4px 0 #2b6cb0;
+            transform: translateY(-2px);
+        }
+
+        /* 實體按鍵按下時的物理效果 */
+        .key.pressed {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 transparent;
+        }
+
+        /* 遊戲訊息提示 */
+        .message {
+            margin-top: 20px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            height: 24px;
+            color: #e53e3e;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>英打遊戲 - 任務四</h1>
+
+        <!-- 儀表板 -->
+        <div class="dashboard">
+            <div class="dash-box">
+                <span class="dash-label">目前目標字母</span>
+                <span class="dash-value target-letter" id="targetDisplay">-</span>
+            </div>
+            <div class="dash-box">
+                <span class="dash-label">目前分數</span>
+                <span class="dash-value" id="scoreDisplay">0</span>
+            </div>
+        </div>
+
+        <!-- 按鈕控制區 -->
+        <div class="controls">
+            <button id="startBtn" class="btn btn-start">開始遊戲</button>
+            <button id="stopBtn" class="btn btn-stop" disabled>停止遊戲</button>
+        </div>
+
+        <!-- ASDF 鍵盤區 -->
+        <div class="keyboard">
+            <div class="key" id="key-A">A</div>
+            <div class="key" id="key-S">S</div>
+            <div class="key" id="key-D">D</div>
+            <div class="key" id="key-F">F</div>
+        </div>
+
+        <!-- 訊息提示欄 -->
+        <div class="message" id="message">點擊「開始遊戲」即可開始挑戰！</div>
+    </div>
+
+    <script>
+        const letters = ['A', 'S', 'D', 'F'];
+        let currentTarget = '';
+        let score = 0;
+        let isPlaying = false;
+        let isKeyPressed = false; // 記錄是否處於長按狀態，避免連續觸發
+
+        // DOM 元素
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const targetDisplay = document.getElementById('targetDisplay');
+        const messageDisplay = document.getElementById('message');
+
+        // 開始遊戲
+        startBtn.addEventListener('click', startGame);
+
+        // 停止遊戲
+        stopBtn.addEventListener('click', () => stopGame(false));
+
+        function startGame() {
+            isPlaying = true;
+            score = 0;
+            scoreDisplay.textContent = score;
+            messageDisplay.textContent = '請按下畫面上亮起提示的字母！';
+            messageDisplay.style.color = '#3182ce';
+
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+
+            nextQuestion();
+        }
+
+        // 隨機產生下一個字母
+        function nextQuestion() {
+            // 清除之前的按鍵亮起狀態
+            if (currentTarget) {
+                const prevKey = document.getElementById(`key-${currentTarget}`);
+                if (prevKey) prevKey.classList.remove('active');
+            }
+
+            // 隨機抽取 A, S, D, F 其中的一個
+            const randomIndex = Math.floor(Math.random() * letters.length);
+            currentTarget = letters[randomIndex];
+
+            // 更新顯示與亮起對應鍵盤
+            targetDisplay.textContent = currentTarget;
+            const currentKeyEl = document.getElementById(`key-${currentTarget}`);
+            if (currentKeyEl) {
+                currentKeyEl.classList.add('active');
+            }
+        }
+
+        // 停止/結束遊戲
+        function stopGame(isWin = false) {
+            isPlaying = false;
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+
+            // 清除按鍵亮起狀態
+            if (currentTarget) {
+                const currentKeyEl = document.getElementById(`key-${currentTarget}`);
+                if (currentKeyEl) currentKeyEl.classList.remove('active');
+            }
+
+            currentTarget = '';
+            targetDisplay.textContent = '-';
+
+            if (isWin) {
+                messageDisplay.textContent = '🎉 恭喜完成！達到 30 分！';
+                messageDisplay.style.color = '#38a169';
+            } else {
+                messageDisplay.textContent = '遊戲已停止，點擊「開始遊戲」重新開始。';
+                messageDisplay.style.color = '#e53e3e';
+            }
+        }
+
+        // 監聽鍵盤按下事件
+        window.addEventListener('keydown', (e) => {
+            // 如果遊戲尚未開始、或是鍵盤按著不放發出的連續重複事件，直接回傳
+            if (!isPlaying || e.repeat || isKeyPressed) return;
+
+            const pressedKey = e.key.toUpperCase();
+
+            // 只處理 A, S, D, F 四個按鍵
+            if (letters.includes(pressedKey)) {
+                isKeyPressed = true; // 設為已按下狀態，防止長按連續加分
+
+                const keyEl = document.getElementById(`key-${pressedKey}`);
+                if (keyEl) keyEl.classList.add('pressed');
+
+                if (pressedKey === currentTarget) {
+                    // 答對
+                    score++;
+                    scoreDisplay.textContent = score;
+
+                    if (score >= 30) {
+                        stopGame(true); // 滿 30 分自動結束
+                    } else {
+                        nextQuestion(); // 換題
+                    }
+                }
+                // 按錯不加分，保留原題 (不做 nextQuestion)
+            }
+        });
+
+        // 監聯鍵盤放開事件 (重置長按狀態)
+        window.addEventListener('keyup', (e) => {
+            const releasedKey = e.key.toUpperCase();
+            if (letters.includes(releasedKey)) {
+                isKeyPressed = false; // 恢復長按判定
+
+                const keyEl = document.getElementById(`key-${releasedKey}`);
+                if (keyEl) keyEl.classList.remove('pressed');
+            }
+        });
+    </script>
+
+</body>
+</html>
